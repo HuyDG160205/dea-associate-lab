@@ -1,0 +1,45 @@
+# Declarative Automation Bundle (formerly Databricks Asset Bundle)
+# Validate / deploy:
+#   databricks bundle validate
+#   databricks bundle deploy -t dev
+#   databricks bundle run dea_fuvekon_etl
+
+bundle:
+  name: dea-associate-lab
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: Unity Catalog for this target
+    default: workspace
+  schema:
+    description: Schema for lab tables
+    default: dea_lab
+
+targets:
+  dev:
+    default: true
+    mode: development
+    workspace:
+      # Optional: set host so the CLI picks the matching .databrickscfg profile
+      # host: https://<dev-workspace-url>
+    variables:
+      catalog: workspace
+      schema: dea_lab
+
+  test:
+    mode: development
+    variables:
+      catalog: workspace
+      schema: dea_lab_test
+
+  prod:
+    # Production pattern: different catalog + workspace host + service principal run_as.
+    # Uncomment host and run_as when you have a real prod workspace.
+    workspace:
+      # host: https://<prod-workspace-url>
+    variables:
+      catalog: main
+      schema: retail

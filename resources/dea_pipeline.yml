@@ -1,0 +1,15 @@
+resources:
+  pipelines:
+    dea_retail_dlt:
+      name: dea-retail-declarative
+      catalog: ${var.catalog}
+      schema: ${var.schema}
+      serverless: true
+      continuous: false
+      libraries:
+        - file:
+            path: pipelines/retail_dlt.py
+      configuration:
+        dea.catalog: ${var.catalog}
+        dea.schema: ${var.schema}
+        dea.volume: landing

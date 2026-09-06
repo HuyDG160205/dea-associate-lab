@@ -1,0 +1,65 @@
+resources:
+  jobs:
+    dea_fuvekon_etl:
+      name: dea-fuvekon-etl
+      max_concurrent_runs: 1
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${var.schema}
+      tasks:
+        - task_key: ingest
+          max_retries: 2
+          min_retry_interval_millis: 60000
+          notebook_task:
+            notebook_path: notebooks/02_ingestion.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+        - task_key: transform
+          depends_on:
+            - task_key: ingest
+          notebook_task:
+            notebook_path: notebooks/03_transform_and_model.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+        - task_key: quality_check
+          depends_on:
+            - task_key: transform
+          notebook_task:
+            notebook_path: notebooks/04_lakeflow_jobs.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+        - task_key: quality_gate
+          depends_on:
+            - task_key: quality_check
+          condition_task:
+            op: EQUAL_TO
+            left: "{{tasks.quality_check.values.failed_rows}}"
+            right: "0"
+        - task_key: publish_gold
+          depends_on:
+            - task_key: quality_gate
+              outcome: "true"
+          notebook_task:
+            notebook_path: notebooks/06_troubleshoot_optimize.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+      # Dev stays manual. Uncomment on the prod target override to schedule.
+      # schedule:
+      #   quartz_cron_expression: "0 0 7 * * ?"
+      #   timezone_id: UTC
+      #   pause_status: PAUSED
+      # File arrival (data-driven):
+      # trigger:
+      #   file_arrival:
+      #     url: /Volumes/${var.catalog}/${var.schema}/landing/orders_csv
+      # Table update:
+      # trigger:
+      #   table_update:
+      #     table_names:
+      #       - ${var.catalog}.${var.schema}.silver_orders
